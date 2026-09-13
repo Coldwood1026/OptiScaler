@@ -1,6 +1,6 @@
 # XeFG 多帧生成（MFG）解锁 — 改动说明
 
-> [English](README-XeFG-MFG-Unlock.md) ｜ **中文**
+> [English](README-MFG-Unlock.md) ｜ **中文**
 >
 > 这是 OptiScaler 的一个**本地修改版**，在 `framegen/xefg` 路径上增加了一项能力：
 > 让 OptiScaler 的 **MFG 倍率下拉框** 在非 Intel 显卡上也能出现并实时切换

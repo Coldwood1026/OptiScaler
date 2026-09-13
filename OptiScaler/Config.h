@@ -590,17 +590,21 @@ class Config
 
     // XeFG
     //
-    // A sanity bound, not a capability: it exists only so that a nonsense value
-    // in the ini cannot ask the provider for a million frames per real frame.
-    // 31 interpolations is a 32X multiplier, which is far past anything usable,
-    // so in practice this is not reached.
+    // The ceiling for the whole XeFG path, in interpolations: 7 is an 8X
+    // multiplier. This is the limit itself, not a sanity bound with the real one
+    // living somewhere else - FGXeFGMaxInterpolatedFrames defaults to it, the
+    // unlock patches report it to the provider as maxSupportedInterpolations,
+    // and XeFG_Dx12 declares it as the swapchain's maxInterpolatedFrames at init,
+    // so one number decides what the provider accepts, what the menu offers, and
+    // what the ini may ask for.
     //
-    // It used to be 5, described as "the combo box offers 2X..6X" - which was
-    // circular, because that combo box is ours. The patch that raises the
-    // provider's reported maximum writes a 4 byte immediate, so the encoding has
-    // never been the limit; nothing in the XeFG path is. Whether the provider
-    // actually copes above 6X is a separate question, and untested.
-    static constexpr int32_t XeFGMaxInterpolations = 31;
+    // It used to be 31 - a bound nothing enforced, so the menu went to 32X while
+    // the provider was still told 31 on every launch. Past 8X the burst outruns
+    // any display and the extra frames only buy latency, so 8X is where it stops.
+    //
+    // The patch that raises the provider's reported maximum writes a 4 byte
+    // immediate, so the encoding has never been what limited this.
+    static constexpr int32_t XeFGMaxInterpolations = 7;
 
     CustomOptional<bool> FGXeFGIgnoreInitChecks { false };
     CustomOptional<int> FGXeFGInterpolationCount { 1 };
@@ -613,10 +617,12 @@ class Config
     // from it at swapchain init - so raising the menu ceiling necessarily
     // declares the same number to the provider at init on every launch.
     //
-    // It used to be 5, which is what capped the menu at 6X. Above 6X is
-    // untested: if the provider sizes anything from this at init, the symptom
-    // would be a failed init or exhausted VRAM, and the way back is to set
-    // XeFG\MaxInterpolatedFrames back to 5.
+    // It used to be 5, which is what capped the menu at 6X; the ceiling above is
+    // now 8X and is what this defaults to. Setting it lower narrows both the menu
+    // and what the provider is told, which is the supported way to go back down:
+    // if the provider sizes anything from this at init, the symptom would be a
+    // failed init or exhausted VRAM, and a value it rejects is clamped in
+    // XeFGUnlock to the ceiling rather than passed through.
     CustomOptional<int> FGXeFGMaxInterpolatedFrames { XeFGMaxInterpolations };
     CustomOptional<bool> FGXeFGExtraPacing { true };
     CustomOptional<bool> FGXeFGUIComposition { false };

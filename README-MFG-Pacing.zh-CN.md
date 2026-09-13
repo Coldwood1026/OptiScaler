@@ -1,12 +1,12 @@
 # XeFG 帧节奏（Frame Pacing）— 改动说明
 
-> [English](README-XeFG-Pacing.md) ｜ **中文**
+> [English](README-MFG-Pacing.md) ｜ **中文**
 >
 > 本文只讲本 OptiScaler 本地修改版里的**一项能力**：让 Intel 生成的帧在 2X 以上
 > **均匀地吐出来**，而不是"挤成一坨、后面空一段"。
 >
 > **修改日期：2026-09-12** ｜ 基线：上游 OptiScaler（GPL-3.0）
-> 姊妹文档：[`README-XeFG-MFG-Unlock.zh-CN.md`](README-XeFG-MFG-Unlock.zh-CN.md)
+> 姊妹文档：[`README-MFG-Unlock.zh-CN.md`](README-MFG-Unlock.zh-CN.md)
 > 详细逆向记录见 [`optiscaler xemfg version/`](../XeSSMFG-Universal-v0.2.0.1/optiscaler%20xemfg%20version/README.md)。
 
 ---

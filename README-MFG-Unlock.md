@@ -1,6 +1,6 @@
 # XeFG Multi-Frame Generation (MFG) Unlock — Change Notes
 
-> **English** ｜ [中文](README-XeFG-MFG-Unlock.zh-CN.md)
+> **English** ｜ [中文](README-MFG-Unlock.zh-CN.md)
 >
 > This is a **locally modified build** of OptiScaler that adds one capability to
 > the `framegen/xefg` path: it makes OptiScaler's **MFG multiplier combo box

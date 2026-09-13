@@ -1,13 +1,13 @@
 # XeFG Frame Pacing — Change Notes
 
-> **English** ｜ [中文](README-XeFG-Pacing.zh-CN.md)
+> **English** ｜ [中文](README-MFG-Pacing.zh-CN.md)
 >
 > This document covers **one capability** of this locally modified OptiScaler
 > build: making Intel's generated frames come out **evenly spaced** above 2X,
 > instead of as one clump followed by a gap.
 >
 > **Modified: 2026-09-12** ｜ Based on upstream OptiScaler (GPL-3.0)
-> Companion document: [`README-XeFG-MFG-Unlock.md`](README-XeFG-MFG-Unlock.md)
+> Companion document: [`README-MFG-Unlock.md`](README-MFG-Unlock.md)
 > Full reverse-engineering write-up:
 > [`optiscaler xemfg version/`](../XeSSMFG-Universal-v0.2.0.1/optiscaler%20xemfg%20version/README.md)
 

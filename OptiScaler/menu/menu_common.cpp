@@ -4088,10 +4088,13 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                 if (customMultiplier - 1 != currentCount)
                     customMultiplier = currentCount + 1;
 
-                ImGui::SameLine(0.0f, 8.0f);
+                // On its own line rather than a SameLine off the MFG combo above.
+                // The menu window is AlwaysAutoResize, so its width is the width of
+                // its widest row -- appending this field to the MFG row made
+                // picking Custom... widen every other row in the menu with it.
                 ImGui::PushItemWidth(60.0f * menuResScale);
 
-                if (ImGui::InputInt("X##mfgCustom", &customMultiplier, 1, 0))
+                if (ImGui::InputInt("Multiplier##mfgCustom", &customMultiplier, 1, 0))
                 {
                     if (customMultiplier < firstCustomMultiplier)
                         customMultiplier = firstCustomMultiplier;
@@ -4105,24 +4108,32 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                 }
 
                 ImGui::PopItemWidth();
+
+                // Above 4X the burst arrives faster than the display refreshes, and
+                // nothing inside the provider can pull that back - it needs the
+                // present rate capped from the outside. Only reachable through this
+                // slot: the named entries stop at 4X.
+                if (customMultiplier > highestNamedMultiplier)
+                {
+                    ImGui::SameLine(0.0f, 8.0f);
+                    ImGui::TextColored(toneMapColor(ImVec4(1.f, 0.8f, 0.f, 1.f)), "! Enable VSync");
+                }
             }
 
-            // Above 4X the burst arrives faster than the display refreshes, and
-            // nothing inside the provider can pull that back - it needs the present
-            // rate capped from the outside.
-            if ((custom ? customMultiplier : currentSet + 1) > highestNamedMultiplier)
-            {
-                ImGui::SameLine(0.0f, 8.0f);
-                ImGui::TextColored(toneMapColor(ImVec4(1.f, 0.8f, 0.f, 1.f)), "! Enable VSync");
-            }
+            // The upper bound is spelled out from the live value rather than as a
+            // fixed number, so narrowing XeFG\MaxInterpolatedFrames does not leave
+            // the tooltip promising a multiplier the slot will refuse.
+            char mfgTip[512];
+            std::snprintf(mfgTip, sizeof(mfgTip),
+                          "Set XeFG interpolation count\n\n"
+                          "2X-4X work on their own.\n\n"
+                          "Above 4X the generated frames are presented faster than\n"
+                          "the display refreshes, so VSync (or a frame rate cap) is\n"
+                          "required - without it the extra frames tear and judder.\n\n"
+                          "Use Custom... for anything above 4X, up to %dX.",
+                          maxMultiplier);
 
-            ShowHelpMarker("Set XeFG interpolation count\n\n"
-                           "2X-4X work on their own.\n\n"
-                           "Above 4X the generated frames are presented faster than\n"
-                           "the display refreshes, so VSync (or a frame rate cap) is\n"
-                           "required - without it the extra frames tear and judder.\n\n"
-                           "Use Custom... for 5X and above, up to whatever\n"
-                           "maximum the provider reports.");
+            ShowHelpMarker(mfgTip);
         }
 
         ImGui::SameLine(0.0f, 16.0f);
