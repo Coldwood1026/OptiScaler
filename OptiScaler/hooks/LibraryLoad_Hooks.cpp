@@ -137,6 +137,12 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
         return LibraryLoadHooks::LoadNvApi();
     }
 
+    if (CheckDllNameW(&libName, &xessfgNamesW))
+    {
+        HMODULE xessfg = NtdllProxy::LoadLibraryExW_Ldr(L"libxess_fg.dll", NULL, 0);
+        return xessfg;
+    }
+
     // Hook SL from local path if using Nvngx FG (and probably upgrading SL for it)
     const bool shouldHookSl = !pathInsideLocalSlPath || State::Instance().activeFgInput == FGInput::NvngxFG;
 
