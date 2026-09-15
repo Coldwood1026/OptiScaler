@@ -868,8 +868,13 @@ bool XeFG_Dx12::Dispatch()
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
                                     Config::Instance()->FGXeFGDebugView.value_or_default(), nullptr);
-    XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_SHOW_ONLY_INTERPOLATION,
-                                    state.fgOnlyGenerated, nullptr);
+    static bool lastOnlyFG = false;
+    if (lastOnlyFG != state.fgOnlyGenerated)
+    {
+        lastOnlyFG = state.fgOnlyGenerated;
+        XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_SHOW_ONLY_INTERPOLATION,
+                                        lastOnlyFG, nullptr);
+    }
 
     xefg_swapchain_frame_constant_data_t constData = {};
 

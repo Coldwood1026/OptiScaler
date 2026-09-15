@@ -4173,6 +4173,10 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         }
         ShowHelpMarker("Enable XeFG Debug view");
 
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::Checkbox("Only FG", &state.fgOnlyGenerated);
+        ShowHelpMarker("Enable XeFG Debug Feature Only FG");
+
         ImGui::EndDisabled();
 
         ImGui::SameLine(0.0f, 16.0f);

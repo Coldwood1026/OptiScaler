@@ -178,7 +178,7 @@ class XeFGUnlock
         // The provider emits every generated frame of a burst back to back above
         // 2X, which is only reachable now that the multi frame path is unlocked.
         // Independent of the patches above, and harmless if it fails.
-        if (unlock)
+        if (unlock && Config::Instance()->FGXeFGExtraPacing.value_or_default())
             XeFGPacing::Install(base);
 
         return true;
