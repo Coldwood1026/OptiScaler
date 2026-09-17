@@ -956,6 +956,15 @@
     <ClInclude Include="shaders\magnifier\precompile\Magnifier_Shader_Vk.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="proxies\XeLLUnLock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="proxies\UnlockBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\XeMFG_Hooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Config.cpp">
@@ -1536,6 +1545,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="shaders\magnifier\Magnifier_Vk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\XeMFG_Hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

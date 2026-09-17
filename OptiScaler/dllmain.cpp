@@ -38,6 +38,7 @@
 #include <hooks/Crypt32_Hooks.h>
 #include <hooks/Advapi32_Hooks.h>
 #include <hooks/Streamline_Hooks.h>
+#include <hooks/XeMFG_Hooks.h>
 
 #include <nvapi/NvApiHooks.h>
 
@@ -1720,10 +1721,15 @@ void CheckMemoryForProxies()
 
     XeSSProxy::InitXeSS();
     XeSSProxy::InitXeSSDx11();
-    XeFGProxy::InitXeFG();
-    XeLLProxy::InitXeLL();
+    if (Config::Instance()->FGXeFGUnlockEnabled.value_or_default())
+        XeMFGHooks::Hooks();
+    else
+    {
+        XeFGProxy::InitXeFG();
+        XeLLProxy::InitXeLL();
 
-    XellHooks::Hook();
+        XellHooks::Hook();
+    }
 
     NVNGXProxy::InitNVNGX();
 }
@@ -1735,9 +1741,6 @@ DWORD WINAPI getGpuInfo(LPVOID hModuleVoid)
     // We don't yet know if the GPU supports FSR 4 so hook any AMD
     if (primaryGpu.vendorId == VendorId::AMD)
         Amdxc64Hooks::Init();
-
-    if (primaryGpu.vendorId == VendorId::Intel && !Config::Instance()->FGXeFGExtraPacing.has_value())
-        Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
 
     else if (Config::Instance()->Fsr4ForceModel.value_or_default() == FSR4Support::INT8)
     {
@@ -1756,6 +1759,11 @@ DWORD WINAPI getGpuInfo(LPVOID hModuleVoid)
     // If DX12 already loaded then grab the full GPU info right away
     if (hModuleVoid)
         IdentifyGpu::updateD3d12Capabilities();
+
+#ifndef DONT_USE_XMX
+    if (primaryGpu.vendorId == VendorId::Intel && !Config::Instance()->FGXeFGExtraPacing.has_value())
+        Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
+#endif
 
     return 0;
 }

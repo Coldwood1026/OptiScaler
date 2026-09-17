@@ -27,6 +27,7 @@
 #include <hooks/Vulkan_Hooks.h>
 #include <hooks/Gdi32_Hooks.h>
 #include <hooks/Streamline_Hooks.h>
+#include <hooks/XeMFG_Hooks.h>
 
 #include <fsr4/FSR4ModelSelection.h>
 #include <fsr4/FSR4Upgrade.h>
@@ -137,10 +138,17 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
         return LibraryLoadHooks::LoadNvApi();
     }
 
-    if (CheckDllNameW(&libName, &xessfgNamesW))
+    if (CheckDllNameW(&libName, &xefgNamesW))
     {
         HMODULE xessfg = NtdllProxy::LoadLibraryExW_Ldr(L"libxess_fg.dll", NULL, 0);
+        XeMFGHooks::HooksXeFG();
         return xessfg;
+    }
+    if (CheckDllNameW(&libName, &xellNamesW))
+    {
+        HMODULE xell = NtdllProxy::LoadLibraryExW_Ldr(L"libxell.dll", NULL, 0);
+        XeMFGHooks::HooksXeLL();
+        return xell;
     }
 
     // Hook SL from local path if using Nvngx FG (and probably upgrading SL for it)
