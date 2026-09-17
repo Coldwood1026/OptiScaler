@@ -2227,6 +2227,37 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
                     drawTiming(TimingType::OsRenderQueue, "RenderQueue", ImVec4(0.76f, 0.51f, 0.188f, 1.0f));
                     drawTiming(TimingType::GpuRender, "GpuRender", ImVec4(0.569f, 0.117f, 0.705f, 1.0f));
                 }
+                else if (auto xellData = XeMFGHooks::GetLatencyReports(3); xellData.m_frame_id > 0)
+                {
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    constexpr float offsetForText = 155;
+                    const auto maxWidth =
+                        config->FpsOverlayHorizontal.value_or_default() ? ImGui::GetWindowWidth() : plotSize.x;
+
+                    float total = xellData.m_present_end_ts - xellData.m_sim_start_ts;
+                    ImGui::Text("XeLL timings, whole frame: %.1fms", total / 1e6);
+                    const auto drawTiming = [&](UINT64 startTime, UINT64 endTime, const char* desc, ImVec4 color)
+                    {
+                        auto toneMappedColor = toneMapColor(color);
+                        float usedTime = endTime - startTime;
+                        float position = (startTime - xellData.m_sim_start_ts) / total;
+                        ImGui::TextColored(toneMappedColor, "%-12s %4.1fms", desc, usedTime / 1e6);
+                        auto leftLimit = ImGui::GetItemRectMin().x + offsetForText * fpsScale;
+                        auto start = static_cast<float>(leftLimit +
+                                                        (ImGui::GetItemRectMin().x + maxWidth - leftLimit) * position);
+                        auto end = static_cast<float>(start + (ImGui::GetItemRectMin().x + maxWidth - leftLimit) *
+                                                                  usedTime / total);
+                        auto pos = ImVec2(start, ImGui::GetItemRectMin().y);
+                        auto size = ImVec2(end, ImGui::GetItemRectMax().y);
+                        drawList->AddRectFilled(pos, size, ImGui::ColorConvertFloat4ToU32(toneMappedColor));
+                    };
+                    drawTiming(xellData.m_sim_start_ts, xellData.m_sim_end_ts, "Simulation",
+                               ImVec4(0.768f, 0.169f, 0.169f, 1.0f));
+                    drawTiming(xellData.m_render_submit_start_ts, xellData.m_render_submit_end_ts, "RenderSubmit",
+                               ImVec4(0.235f, 0.705f, 0.294f, 1.0f));
+                    drawTiming(xellData.m_present_start_ts, xellData.m_present_end_ts, "Present",
+                               ImVec4(1.0f, 0.88f, 0.098f, 1.0f));
+                }
 #endif
             }
         }
@@ -4072,7 +4103,6 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
         // Takes effect once, at XeFG init: the pacing hook rewrites the present
         // thunk, so this cannot be toggled while the game is running.
-        ImGui::SameLine(0.0f, 16.0f);
         bool fgExtraPacing = config->FGXeFGExtraPacing.value_or_default();
         if (ImGui::Checkbox("Extra Pacing", &fgExtraPacing))
             config->FGXeFGExtraPacing = fgExtraPacing;

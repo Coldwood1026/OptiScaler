@@ -65,6 +65,19 @@ xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainSetEnabled(xefg_swapchain_han
     return XeFGProxy::_xefgSwapChainSetEnabled(hSwapChain, enable);
 }
 
+xell_result_t XeMFGHooks::hkxellD3D12CreateContext(ID3D12Device* device, xell_context_handle_t* out_context)
+{
+    auto result = XeLLProxy::_xellD3D12CreateContext(device, out_context);
+    if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        if (_xellContext)
+        {
+            LOG_WARN("Multiple XeLL context exist at the same time. Destroy old context");
+            XeLLProxy::DestroyContext()(_xellContext);
+        }
+        _xellContext = *out_context;
+    return result;
+}
+
 xell_result_t XeMFGHooks::hkxellSetGeneratedFramesCount(xell_context_handle_t context, uint32_t frameId,
                                                         uint32_t framesCount)
 {
@@ -109,12 +122,38 @@ bool XeMFGHooks::HooksXeLL()
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
+    if (XeLLProxy::_xellD3D12CreateContext)
+        DetourAttach(&(PVOID&) XeLLProxy::_xellD3D12CreateContext, hkxellD3D12CreateContext);
+
     if (XeLLProxy::_xellSetGeneratedFramesCount)
         DetourAttach(&(PVOID&) XeLLProxy::_xellSetGeneratedFramesCount, hkxellSetGeneratedFramesCount);
 
     DetourTransactionCommit();
     _hookedLL = true;
     return true;
+}
+
+xell_frame_report_t XeMFGHooks::GetLatencyReports(uint32_t frequency)
+{
+    if (!_xellContext)
+        return _xellLatencyData;
+
+    static auto lastCallTime = std::chrono::steady_clock::time_point {};
+
+    auto now = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCallTime);
+
+    if (duration.count() < 1000 / frequency)
+    {
+        return _xellLatencyData;
+    }
+
+    lastCallTime = now;
+
+    XeLLProxy::GetFramesReports()(_xellContext, _xellReport);
+    _xellLatencyData = _xellReport[63];
+
+    return _xellLatencyData;
 }
 
 bool XeMFGHooks::Hooks() { return HooksXeFG() && HooksXeLL(); }

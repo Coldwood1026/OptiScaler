@@ -4,7 +4,6 @@
 #include "Logger.h"
 #include "Config.h"
 #include "UnlockBase.h"
-#include <xell.h>
 
 using namespace UnLockBase;
 
@@ -42,11 +41,11 @@ class XeLLUnlock
             return false;
         }
 
-         if (nt->FileHeader.TimeDateStamp != KnownBuildStamp || nt->OptionalHeader.SizeOfImage != KnownSizeOfImage)
-             LOG_WARN("XeLL unlock: unrecognised provider build {:#010x}/{:#x}, relying on per-byte checks",
-                      nt->FileHeader.TimeDateStamp, nt->OptionalHeader.SizeOfImage);
-         else
-             LOG_INFO("XeLL unlock: recognised provider build {:#010x}", KnownBuildStamp);
+        if (nt->FileHeader.TimeDateStamp != KnownBuildStamp || nt->OptionalHeader.SizeOfImage != KnownSizeOfImage)
+            LOG_WARN("XeLL unlock: unrecognised provider build {:#010x}/{:#x}, relying on per-byte checks",
+                     nt->FileHeader.TimeDateStamp, nt->OptionalHeader.SizeOfImage);
+        else
+            LOG_INFO("XeLL unlock: recognised provider build {:#010x}", KnownBuildStamp);
 
         static const uint8_t u1Old[] = { 0x76, 0x07 };
         static const uint8_t u1New[] = { 0xEB, 0x07 };
