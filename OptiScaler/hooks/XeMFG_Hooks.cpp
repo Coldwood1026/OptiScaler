@@ -69,13 +69,25 @@ xell_result_t XeMFGHooks::hkxellD3D12CreateContext(ID3D12Device* device, xell_co
 {
     auto result = XeLLProxy::_xellD3D12CreateContext(device, out_context);
     if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+    {
         if (_xellContext)
         {
             LOG_WARN("Multiple XeLL context exist at the same time. Destroy old context");
             XeLLProxy::DestroyContext()(_xellContext);
         }
         _xellContext = *out_context;
+        _xellSleepParms.bLowLatencyMode = 1; // default enable LowLatency Mode
+    }
     return result;
+}
+
+xell_result_t XeMFGHooks::hkxellSetSleepMode(xell_context_handle_t context, const xell_sleep_params_t* param)
+{
+    if (_lastFraneLimit == 0.f)
+        _xellSleepParms.minimumIntervalUs = 0;
+    else
+        _xellSleepParms.minimumIntervalUs = 1e6 / _lastFraneLimit;
+    return XeLLProxy::_xellSetSleepMode(context, &_xellSleepParms);
 }
 
 xell_result_t XeMFGHooks::hkxellSetGeneratedFramesCount(xell_context_handle_t context, uint32_t frameId,
@@ -110,6 +122,7 @@ bool XeMFGHooks::HooksXeFG()
                               hkxefgSwapChainSetNumInterpolatedFrames);
     if (XeFGProxy::_xefgSwapChainSetEnabled)
         result = DetourAttach(&(PVOID&) XeFGProxy::_xefgSwapChainSetEnabled, hkxefgSwapChainSetEnabled);
+
     DetourTransactionCommit();
     _hookedFG = true;
     return true;
@@ -124,7 +137,8 @@ bool XeMFGHooks::HooksXeLL()
 
     if (XeLLProxy::_xellD3D12CreateContext)
         DetourAttach(&(PVOID&) XeLLProxy::_xellD3D12CreateContext, hkxellD3D12CreateContext);
-
+    if (XeLLProxy::_xellSetSleepMode)
+        DetourAttach(&(PVOID&) XeLLProxy::_xellSetSleepMode, hkxellSetSleepMode);
     if (XeLLProxy::_xellSetGeneratedFramesCount)
         DetourAttach(&(PVOID&) XeLLProxy::_xellSetGeneratedFramesCount, hkxellSetGeneratedFramesCount);
 
@@ -133,7 +147,16 @@ bool XeMFGHooks::HooksXeLL()
     return true;
 }
 
-xell_frame_report_t XeMFGHooks::GetLatencyReports(uint32_t frequency)
+void XeMFGHooks::Update()
+{
+    if (!_xellContext || _lastFraneLimit == Config::Instance()->FramerateLimit.value_or(0.f))
+        return;
+    _lastFraneLimit = Config::Instance()->FramerateLimit.value_or(0.f);
+
+    hkxellSetSleepMode(_xellContext, &_xellSleepParms);
+}
+
+xell_frame_report_t XeMFGHooks::GetLatencyReports(const float frequency)
 {
     if (!_xellContext)
         return _xellLatencyData;
@@ -141,9 +164,8 @@ xell_frame_report_t XeMFGHooks::GetLatencyReports(uint32_t frequency)
     static auto lastCallTime = std::chrono::steady_clock::time_point {};
 
     auto now = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCallTime);
-
-    if (duration.count() < 1000 / frequency)
+    auto interval = std::chrono::milliseconds(static_cast<long long>(1000.0f / frequency));
+    if (now - lastCallTime < interval)
     {
         return _xellLatencyData;
     }

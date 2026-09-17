@@ -4199,7 +4199,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
     }
     // WIP
     // Select the number of interpolation frames in native XEFG input
-    else if (XeMFGHooks::GetContext() && XeMFGHooks::GetMaxInterpolationCount() > 1)
+    else if (XeMFGHooks::GetxefgContext() && XeMFGHooks::GetMaxInterpolationCount() > 1)
     {
 
         ImGui::SeparatorText("Frame Generation (XeFG - Native)");
@@ -5155,7 +5155,7 @@ void MenuCommon::RenderFramerateSettings(RenderMenuContext& ctx)
         }
         else
         {
-            if (XellHooks::canLimit())
+            if (XellHooks::canLimit() || XeMFGHooks::GetxellContext())
                 currentMethod = "Game's XeLL";
             else
                 currentMethod = "Fallback";

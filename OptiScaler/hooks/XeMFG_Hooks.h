@@ -9,10 +9,12 @@ class XeMFGHooks
     inline static bool _hookedLL = false;
     inline static int _maxInterpolationCount = 1;
     inline static int _currentInterpolationCount = 1;
+    inline static float _lastFraneLimit = 0.f;
 
     inline static xefg_swapchain_handle_t _xefgContext = nullptr;
     inline static xell_context_handle_t _xellContext = nullptr;
 
+    inline static xell_sleep_params_t _xellSleepParms {};
     inline static xell_frame_report_t _xellReport[64];
     inline static xell_frame_report_t _xellLatencyData { 0 };
 
@@ -29,6 +31,7 @@ class XeMFGHooks
     static xefg_swapchain_result_t hkxefgSwapChainSetEnabled(xefg_swapchain_handle_t hSwapChain, uint32_t enable);
 
     static xell_result_t hkxellD3D12CreateContext(ID3D12Device* device, xell_context_handle_t* out_context);
+    static xell_result_t hkxellSetSleepMode(xell_context_handle_t context, const xell_sleep_params_t* param);
     static xell_result_t hkxellSetGeneratedFramesCount(xell_context_handle_t context, uint32_t frameId,
                                                        uint32_t framesCount);
 
@@ -38,7 +41,9 @@ class XeMFGHooks
     static bool Hooks();
     static bool HooksXeFG();
     static bool HooksXeLL();
-    static xell_frame_report_t GetLatencyReports(uint32_t frequency);
-    static xefg_swapchain_handle_t GetContext() { return _xefgContext; };
+    static void Update();
+    static xell_frame_report_t GetLatencyReports(float frequency);
+    static xefg_swapchain_handle_t GetxefgContext() { return _xefgContext; };
+    static xell_context_handle_t GetxellContext() { return _xellContext; };
     static uint32_t GetMaxInterpolationCount() { return _maxInterpolationCount; };
 };
