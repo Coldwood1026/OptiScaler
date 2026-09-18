@@ -128,34 +128,34 @@ class XeFGUnlock
         static const uint8_t u4Old2[] = { 0xC7, 0x87, 0x8C, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
         static const uint8_t u4New2[] = { 0xC7, 0x87, 0x8C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-        // immOffset is the offset of a little endian imm32 inside `replacement`
-        // that gets overwritten with the configured interpolation count, so the
-        // count is baked into the bytes we write rather than patched in later.
-        // target file version 1.3.1.78
-        const Patch patchesSDK[] = {
-            { 0x20DA4F, u1Old, u1New, sizeof(u1Old), -1, unlock, "U1/frame-count-fallback" },
-            { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, unlock, "U2/model-downgrade" },
-            { 0x1A517D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
-            { 0x1A45C2, u4Old, u4New, sizeof(u4Old), 6, unlock, "U4/override-clamp" },
-            { 0x20973B, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
-        };
-        // target file version 1.3.3.93，driver version 101.8992
-        const Patch patchesDriver[] = {
-            // Allow switching to the Intel-specific model (Code name XE 15)
-            // { 0x153634, u2Old2, u2New2, sizeof(u2Old2), -1, unlock, "U2/model-downgrade" },
-            { 0x152E3D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
-            { 0x152272, u4Old2, u4New2, sizeof(u4Old2), 6, unlock, "U4/override-clamp" },
-            { 0x1B2CBB, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
-        };
         const Patch* patches = nullptr;
         int PatchCount = 0;
         if (checkIndex == 0)
         {
+            // immOffset is the offset of a little endian imm32 inside `replacement`
+            // that gets overwritten with the configured interpolation count, so the
+            // count is baked into the bytes we write rather than patched in later.
+            // target file version 1.3.1.78
+            const Patch patchesSDK[] = {
+                { 0x20DA4F, u1Old, u1New, sizeof(u1Old), -1, unlock, "U1/frame-count-fallback" },
+                { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, !State::Instance().IntelVendorId, "U2/model-downgrade" },
+                { 0x1A517D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
+                { 0x1A45C2, u4Old, u4New, sizeof(u4Old), 6, unlock, "U4/override-clamp" },
+                { 0x20973B, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
+            };
             patches = patchesSDK;
             PatchCount = sizeof(patchesSDK) / sizeof(Patch);
         }
         else
         {
+            // target file version 1.3.3.93，driver version 101.8992
+            const Patch patchesDriver[] = {
+                // Allow switching to the Intel-specific model (Code name XE 15)
+                // { 0x153634, u2Old2, u2New2, sizeof(u2Old2), -1, unlock, "U2/model-downgrade" },
+                { 0x152E3D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
+                { 0x152272, u4Old2, u4New2, sizeof(u4Old2), 6, unlock, "U4/override-clamp" },
+                { 0x1B2CBB, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
+            };
             patches = patchesDriver;
             PatchCount = sizeof(patchesDriver) / sizeof(Patch);
         }

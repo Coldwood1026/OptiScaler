@@ -1762,7 +1762,10 @@ DWORD WINAPI getGpuInfo(LPVOID hModuleVoid)
 
 #ifndef DONT_USE_XMX
     if (primaryGpu.vendorId == VendorId::Intel && !Config::Instance()->FGXeFGExtraPacing.has_value())
+    {
         Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
+        State::Instance().IntelVendorId = true;
+    }
 #endif
 
     return 0;

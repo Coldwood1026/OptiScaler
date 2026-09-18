@@ -257,6 +257,7 @@ class State
     float lastMipBias = 100.0f;
     float lastMipBiasMax = -100.0f;
 
+    bool IntelVendorId = false;
     bool WAR_xefgRequestFGToggle = false;
 
     bool dlssgGameDMFGSupported = false;
