@@ -1126,7 +1126,7 @@ void LibraryLoadHooks::CheckModulesInMemory()
         xellModule = GetDllNameWModule(&xellNamesW);
         if (xellModule != nullptr)
         {
-            LOG_DEBUG("libxess_fg.dll already in memory");
+            LOG_DEBUG("libxell.dll already in memory");
             XeLLProxy::HookXeLL(xellModule);
         }
     }
