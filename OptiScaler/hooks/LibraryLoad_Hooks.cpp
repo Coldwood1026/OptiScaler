@@ -1115,6 +1115,8 @@ void LibraryLoadHooks::CheckModulesInMemory()
         xefgModule = GetDllNameWModule(&xefgNamesW);
         if (xefgModule != nullptr)
         {
+            State::Instance().IntelVendorId = true;
+            Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
             LOG_DEBUG("libxess_fg.dll already in memory");
             XeFGProxy::HookXeFG(xefgModule);
         }
@@ -1126,6 +1128,8 @@ void LibraryLoadHooks::CheckModulesInMemory()
         xellModule = GetDllNameWModule(&xellNamesW);
         if (xellModule != nullptr)
         {
+            State::Instance().IntelVendorId = true;
+            Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
             LOG_DEBUG("libxell.dll already in memory");
             XeLLProxy::HookXeLL(xellModule);
         }
