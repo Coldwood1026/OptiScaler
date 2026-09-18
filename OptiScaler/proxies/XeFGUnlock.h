@@ -50,6 +50,8 @@ class XeFGUnlock
   public:
     static bool Applied() { return _applied; }
 
+    static void ResetApplied() { _applied = false; }
+
     // Returns true when every patch was applied. Safe to call more than once.
     static bool Apply(HMODULE module)
     {
@@ -74,12 +76,27 @@ class XeFGUnlock
             LOG_WARN("XeFG unlock: provider has no usable PE headers, skipping");
             return false;
         }
-
-        if (nt->FileHeader.TimeDateStamp != KnownBuildStamp || nt->OptionalHeader.SizeOfImage != KnownSizeOfImage)
+        bool check = false;
+        uint32_t checkIndex = 0;
+        for (int i = 0; i < KnownBuildStamp.size(); i++)
+        {
+            if (nt->FileHeader.TimeDateStamp == KnownBuildStamp[i] &&
+                nt->OptionalHeader.SizeOfImage == KnownSizeOfImage[i])
+            {
+                check = true;
+                checkIndex = i;
+                break;
+            }
+        }
+        if (check)
+            LOG_INFO("XeFG unlock: recognised provider build {:#010x} {:#010x}", KnownBuildStamp[0],
+                     KnownBuildStamp[1]);
+        else
+        {
             LOG_WARN("XeFG unlock: unrecognised provider build {:#010x}/{:#x}, relying on per-byte checks",
                      nt->FileHeader.TimeDateStamp, nt->OptionalHeader.SizeOfImage);
-        else
-            LOG_INFO("XeFG unlock: recognised provider build {:#010x}", KnownBuildStamp);
+            return false;
+        }
 
         int32_t maxInterp = Config::Instance()->FGXeFGMaxInterpolatedFrames.value_or_default();
 
@@ -105,25 +122,49 @@ class XeFGUnlock
         static const uint8_t u5Old[] = { 0xB8, 0x01, 0x00, 0x00, 0x00 };
         static const uint8_t u5New[] = { 0xB8, 0x00, 0x00, 0x00, 0x00 };
 
+        static const uint8_t u2Old2[] = { 0x74, 0x0C };
+        static const uint8_t u2New2[] = { 0xEB, 0x09 };
+
+        static const uint8_t u4Old2[] = { 0xC7, 0x87, 0x8C, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
+        static const uint8_t u4New2[] = { 0xC7, 0x87, 0x8C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
         // immOffset is the offset of a little endian imm32 inside `replacement`
         // that gets overwritten with the configured interpolation count, so the
         // count is baked into the bytes we write rather than patched in later.
-        const Patch patches[] = {
+        // target file version 1.3.1.78
+        const Patch patchesSDK[] = {
             { 0x20DA4F, u1Old, u1New, sizeof(u1Old), -1, unlock, "U1/frame-count-fallback" },
             { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, unlock, "U2/model-downgrade" },
             { 0x1A517D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
             { 0x1A45C2, u4Old, u4New, sizeof(u4Old), 6, unlock, "U4/override-clamp" },
             { 0x20973B, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
         };
-
-        constexpr int32_t PatchCount = static_cast<int32_t>(sizeof(patches) / sizeof(patches[0]));
-
-        Edited applied[PatchCount] {};
+        // target file version 1.3.3.93，driver version 101.8992
+        const Patch patchesDriver[] = {
+            { 0x153634, u2Old2, u2New2, sizeof(u2Old2), -1, unlock, "U2/model-downgrade" },
+            { 0x152E3D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
+            { 0x152272, u4Old2, u4New2, sizeof(u4Old2), 6, unlock, "U4/override-clamp" },
+            { 0x1B2CBB, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
+        };
+        const Patch* patches = nullptr;
+        int PatchCount = 0;
+        if (checkIndex == 0)
+        {
+            patches = patchesSDK;
+            PatchCount = 5;
+        }
+        else
+        {
+            patches = patchesDriver;
+            PatchCount = 4;
+        }
+        Edited applied[5] {};
         int32_t appliedCount = 0;
         int32_t skipped = 0;
 
-        for (const auto& patch : patches)
+        for (int i = 0; i < PatchCount; i++)
         {
+            auto patch = patches[i];
             if (!patch.enabled)
             {
                 skipped++;
@@ -198,8 +239,8 @@ class XeFGUnlock
     static constexpr int32_t MaxReportedInterpolations = Config::XeFGMaxInterpolations;
 
     // Build identity of the libxess_fg.dll these offsets were derived from.
-    static constexpr uint32_t KnownBuildStamp = 0x69CB0F4D;
-    static constexpr uint32_t KnownSizeOfImage = 0x015ED000;
+    static constexpr std::array<uint32_t, 2> KnownBuildStamp = { 0x69CB0F4D, 0x6A82BCEA };
+    static constexpr std::array<uint32_t, 2> KnownSizeOfImage = { 0x015ED000, 0x01184000 };
 
     inline static bool _applied = false;
 };

@@ -11,6 +11,7 @@
 
 #include <proxies/XeSS_Proxy.h>
 #include <proxies/XeFG_Proxy.h>
+#include <proxies/XeFGUnlock.h>
 #include <proxies/XeLL_Proxy.h>
 #include <proxies/NVNGX_Proxy.h>
 #include <proxies/FfxApi_Proxy.h>
@@ -136,19 +137,6 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
         LOG_INFO("{} call!", libNameA);
 
         return LibraryLoadHooks::LoadNvApi();
-    }
-
-    if (CheckDllNameW(&libName, &xefgNamesW))
-    {
-        HMODULE xessfg = NtdllProxy::LoadLibraryExW_Ldr(L"libxess_fg.dll", NULL, 0);
-        XeMFGHooks::HooksXeFG();
-        return xessfg;
-    }
-    if (CheckDllNameW(&libName, &xellNamesW))
-    {
-        HMODULE xell = NtdllProxy::LoadLibraryExW_Ldr(L"libxell.dll", NULL, 0);
-        XeMFGHooks::HooksXeLL();
-        return xell;
     }
 
     // Hook SL from local path if using Nvngx FG (and probably upgrading SL for it)
@@ -480,6 +468,30 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
             XeSSProxy::InitXeSSDx11(module);
 
         return module;
+    }
+
+    if (CheckDllNameW(&libName, &xefgNamesW))
+    {
+        HMODULE xessfg = NtdllProxy::LoadLibraryExW_Ldr(XeFGProxy::Module_Path().c_str(), NULL, 0);
+        XeMFGHooks::HooksXeFG();
+        return xessfg;
+    }
+
+    if (CheckDllNameW(&libName, &igxefgNamesW))
+    {
+        HMODULE igxessfg = NtdllProxy::LoadLibraryExW_Ldr(libName.c_str(), NULL, 0);
+        XeFGUnlock::ResetApplied();
+        if (!Config::Instance()->FGXeFGUnlockEnabled.value_or_default() || XeFGUnlock::Apply(igxessfg))
+            return igxessfg;
+        else
+            return nullptr;
+    }
+
+    if (CheckDllNameW(&libName, &xellNamesW))
+    {
+        HMODULE xell = NtdllProxy::LoadLibraryExW_Ldr(XeLLProxy::Module_Path().c_str(), NULL, 0);
+        XeMFGHooks::HooksXeLL();
+        return xell;
     }
 
     if (CheckDllNameW(&libName, &amdxc64NamesW))

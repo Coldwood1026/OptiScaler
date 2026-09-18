@@ -42,7 +42,7 @@ class XeMFGHooks
     static bool HooksXeFG();
     static bool HooksXeLL();
     static void Update();
-    static xell_frame_report_t GetLatencyReports(float frequency);
+    static xell_frame_report_t GetLatencyReports(const float frequency);
     static xefg_swapchain_handle_t GetxefgContext() { return _xefgContext; };
     static xell_context_handle_t GetxellContext() { return _xellContext; };
     static uint32_t GetMaxInterpolationCount() { return _maxInterpolationCount; };
