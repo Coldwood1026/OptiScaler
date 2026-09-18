@@ -4036,16 +4036,32 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             const bool allowCustom = maxMultiplier >= firstCustomMultiplier;
 
+            // "Auto" is not a fourth value sitting next to 2X-4X: it is the absence of a
+            // value, which is what the backend reads as "use whatever the game asked
+            // for". It has to be tested before the count does, because an auto run still
+            // has a live count - namely the one that came from the game.
+            const bool autoMode = !config->FGXeFGInterpolationCount.has_value();
+
             const int currentCount = (int) fgOutput->GetInterpolatedFrameCount();
             const int currentSet = currentCount - 1;
-            const bool custom = allowCustom && currentSet >= namedCount;
+
+            // Only an explicit choice can be "custom". While auto is following the game
+            // the count is just as likely to land above 4X, and showing that as a custom
+            // entry would take credit for a multiplier this menu never picked.
+            const bool custom = !autoMode && allowCustom && currentSet >= namedCount;
 
             // Remembers what was last typed, so leaving and re-entering the custom
             // slot does not silently drop back to the first custom multiplier.
             static int customMultiplier = firstCustomMultiplier;
 
             char currentLabel[32];
-            if (custom)
+            if (autoMode)
+                // Spelling out the multiplier auto resolved to is the point of the
+                // entry, but before the first DLSSG request there is not one yet and
+                // the live count reads as 0.
+                std::snprintf(currentLabel, sizeof(currentLabel), currentCount > 0 ? "Auto (%dX)" : "Auto",
+                              currentCount + 1);
+            else if (custom)
                 std::snprintf(currentLabel, sizeof(currentLabel), "%dX (custom)", currentCount + 1);
             else
                 std::snprintf(currentLabel, sizeof(currentLabel), "%s",
@@ -4055,6 +4071,17 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             if (ImGui::BeginCombo("MFG", currentLabel))
             {
+                if (ImGui::Selectable("Auto", autoMode))
+                {
+                    // Clearing the optional is what selects auto: storing a number here
+                    // would leave a value behind and the backend would stop following the
+                    // game. An unset value is also what the ini gets - it is written back
+                    // as "auto" rather than as whatever auto last resolved to.
+                    LOG_INFO("MFG menu: Auto selected, following the game's frame generation multiplier");
+                    state.fgChanged = true;
+                    config->FGXeFGInterpolationCount = std::nullopt;
+                }
+
                 for (int i = 0; i < namedCount && i < maxInterpolationCount; i++)
                 {
                     if (ImGui::Selectable(intModes[i], (currentSet == i)))
@@ -4126,6 +4153,8 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             char mfgTip[512];
             std::snprintf(mfgTip, sizeof(mfgTip),
                           "Set XeFG interpolation count\n\n"
+                          "Auto (the default) follows the multiplier of the game's own\n"
+                          "frame generation setting, and is what an unset value means.\n\n"
                           "2X-4X work on their own.\n\n"
                           "Above 4X the generated frames are presented faster than\n"
                           "the display refreshes, so VSync (or a frame rate cap) is\n"
