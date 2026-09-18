@@ -1108,6 +1108,29 @@ void LibraryLoadHooks::CheckModulesInMemory()
     //     }
     // }
 
+    // XeFG
+    if (XeFGProxy::Module() == nullptr)
+    {
+        HMODULE xefgModule = nullptr;
+        xefgModule = GetDllNameWModule(&xefgNamesW);
+        if (xefgModule != nullptr)
+        {
+            LOG_DEBUG("libxess_fg.dll already in memory");
+            XeFGProxy::HookXeFG(xefgModule);
+        }
+    }
+    // XeLL
+    if (XeLLProxy::Module() == nullptr)
+    {
+        HMODULE xellModule = nullptr;
+        xellModule = GetDllNameWModule(&xellNamesW);
+        if (xellModule != nullptr)
+        {
+            LOG_DEBUG("libxess_fg.dll already in memory");
+            XeLLProxy::HookXeLL(xellModule);
+        }
+    }
+
     //// FFX Dx12
     // if (FfxApiProxy::Dx12Module() == nullptr)
     //{

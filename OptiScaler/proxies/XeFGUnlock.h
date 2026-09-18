@@ -141,7 +141,8 @@ class XeFGUnlock
         };
         // target file version 1.3.3.93，driver version 101.8992
         const Patch patchesDriver[] = {
-            { 0x153634, u2Old2, u2New2, sizeof(u2Old2), -1, unlock, "U2/model-downgrade" },
+            // Allow switching to the Intel-specific model (Code name XE 15)
+            // { 0x153634, u2Old2, u2New2, sizeof(u2Old2), -1, unlock, "U2/model-downgrade" },
             { 0x152E3D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
             { 0x152272, u4Old2, u4New2, sizeof(u4Old2), 6, unlock, "U4/override-clamp" },
             { 0x1B2CBB, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
@@ -151,12 +152,12 @@ class XeFGUnlock
         if (checkIndex == 0)
         {
             patches = patchesSDK;
-            PatchCount = 5;
+            PatchCount = sizeof(patchesSDK) / sizeof(Patch);
         }
         else
         {
             patches = patchesDriver;
-            PatchCount = 4;
+            PatchCount = sizeof(patchesDriver) / sizeof(Patch);
         }
         Edited applied[5] {};
         int32_t appliedCount = 0;
@@ -164,7 +165,7 @@ class XeFGUnlock
 
         for (int i = 0; i < PatchCount; i++)
         {
-            auto patch = patches[i];
+            const auto& patch = patches[i];
             if (!patch.enabled)
             {
                 skipped++;
