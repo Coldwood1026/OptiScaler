@@ -4049,23 +4049,30 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             intModes.reserve(maxInterpolationCount + 1);
           
             const int currentCount = (int) fgOutput->GetInterpolatedFrameCount();
-          
+            int currentSet = currentCount;
             if (currentCount > 0)
                 intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
             else
+            {
                 intModes.emplace_back(std::string("Auto"));
+                currentSet = 0;
+            }
             for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
                 intModes.emplace_back(std::format("{}X", i));
 
             ImGui::PushItemWidth(95.0f * menuResScale);
 
-            if (ImGui::BeginCombo("MFG", intModes[currentCount].c_str()))
+            if (ImGui::BeginCombo("MFG", intModes[currentSet].c_str()))
             {
                 for (int i = 0; i < maxInterpolationCount; i++)
                 {
-                    if (ImGui::Selectable(intModes[i].c_str(), (currentCount == i)))
+                    if (ImGui::Selectable(intModes[i].c_str(), (currentSet == i)))
                     {
-                        if (i == 0) config->FGXeFGInterpolationCount = std::nullopt;;
+                        if (i == 0)
+                        {
+                            config->FGXeFGInterpolationCount = std::nullopt;
+                            break;
+                        }
                         LOG_DEBUG("XeFG Interpolation Count set to: {}", i);
                         state.fgChanged = true;
                         config->FGXeFGInterpolationCount = i;
