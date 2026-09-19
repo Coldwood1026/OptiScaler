@@ -41,11 +41,16 @@
 #include "Logger.h"
 #include "Config.h"
 #include "XeFGPacing.h"
+#include "UnlockBase.h"
+
+using namespace UnLockBase;
 
 class XeFGUnlock
 {
   public:
     static bool Applied() { return _applied; }
+
+    static void ResetApplied() { _applied = false; }
 
     // Returns true when every patch was applied. Safe to call more than once.
     static bool Apply(HMODULE module)
@@ -71,12 +76,27 @@ class XeFGUnlock
             LOG_WARN("XeFG unlock: provider has no usable PE headers, skipping");
             return false;
         }
-
-        if (nt->FileHeader.TimeDateStamp != KnownBuildStamp || nt->OptionalHeader.SizeOfImage != KnownSizeOfImage)
+        bool check = false;
+        uint32_t checkIndex = 0;
+        for (int i = 0; i < KnownBuildStamp.size(); i++)
+        {
+            if (nt->FileHeader.TimeDateStamp == KnownBuildStamp[i] &&
+                nt->OptionalHeader.SizeOfImage == KnownSizeOfImage[i])
+            {
+                check = true;
+                checkIndex = i;
+                break;
+            }
+        }
+        if (check)
+            LOG_INFO("XeFG unlock: recognised provider build {:#010x} {:#010x}", KnownBuildStamp[0],
+                     KnownBuildStamp[1]);
+        else
+        {
             LOG_WARN("XeFG unlock: unrecognised provider build {:#010x}/{:#x}, relying on per-byte checks",
                      nt->FileHeader.TimeDateStamp, nt->OptionalHeader.SizeOfImage);
-        else
-            LOG_INFO("XeFG unlock: recognised provider build {:#010x}", KnownBuildStamp);
+            return false;
+        }
 
         int32_t maxInterp = Config::Instance()->FGXeFGMaxInterpolatedFrames.value_or_default();
 
@@ -102,25 +122,50 @@ class XeFGUnlock
         static const uint8_t u5Old[] = { 0xB8, 0x01, 0x00, 0x00, 0x00 };
         static const uint8_t u5New[] = { 0xB8, 0x00, 0x00, 0x00, 0x00 };
 
-        // immOffset is the offset of a little endian imm32 inside `replacement`
-        // that gets overwritten with the configured interpolation count, so the
-        // count is baked into the bytes we write rather than patched in later.
-        const Patch patches[] = {
-            { 0x20DA4F, u1Old, u1New, sizeof(u1Old), -1, unlock, "U1/frame-count-fallback" },
-            { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, unlock, "U2/model-downgrade" },
-            { 0x1A517D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
-            { 0x1A45C2, u4Old, u4New, sizeof(u4Old), 6, unlock, "U4/override-clamp" },
-            { 0x20973B, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
-        };
+        static const uint8_t u2Old2[] = { 0x74, 0x0C };
+        static const uint8_t u2New2[] = { 0xEB, 0x09 };
 
-        constexpr int32_t PatchCount = static_cast<int32_t>(sizeof(patches) / sizeof(patches[0]));
+        static const uint8_t u4Old2[] = { 0xC7, 0x87, 0x8C, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
+        static const uint8_t u4New2[] = { 0xC7, 0x87, 0x8C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-        Edited applied[PatchCount] {};
+        const Patch* patches = nullptr;
+        int PatchCount = 0;
+        if (checkIndex == 0)
+        {
+            // immOffset is the offset of a little endian imm32 inside `replacement`
+            // that gets overwritten with the configured interpolation count, so the
+            // count is baked into the bytes we write rather than patched in later.
+            // target file version 1.3.1.78
+            const Patch patchesSDK[] = {
+                { 0x20DA4F, u1Old, u1New, sizeof(u1Old), -1, unlock, "U1/frame-count-fallback" },
+                { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, !State::Instance().IntelVendorId, "U2/model-downgrade" },
+                { 0x1A517D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
+                { 0x1A45C2, u4Old, u4New, sizeof(u4Old), 6, unlock, "U4/override-clamp" },
+                { 0x20973B, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
+            };
+            patches = patchesSDK;
+            PatchCount = sizeof(patchesSDK) / sizeof(Patch);
+        }
+        else
+        {
+            // target file version 1.3.3.93，driver version 101.8992
+            const Patch patchesDriver[] = {
+                // Allow switching to the Intel-specific model (Code name XE 15)
+                // { 0x153634, u2Old2, u2New2, sizeof(u2Old2), -1, unlock, "U2/model-downgrade" },
+                { 0x152E3D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
+                { 0x152272, u4Old2, u4New2, sizeof(u4Old2), 6, unlock, "U4/override-clamp" },
+                { 0x1B2CBB, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
+            };
+            patches = patchesDriver;
+            PatchCount = sizeof(patchesDriver) / sizeof(Patch);
+        }
+        Edited applied[5] {};
         int32_t appliedCount = 0;
         int32_t skipped = 0;
 
-        for (const auto& patch : patches)
+        for (int i = 0; i < PatchCount; i++)
         {
+            const auto& patch = patches[i];
             if (!patch.enabled)
             {
                 skipped++;
@@ -178,7 +223,7 @@ class XeFGUnlock
         // The provider emits every generated frame of a burst back to back above
         // 2X, which is only reachable now that the multi frame path is unlocked.
         // Independent of the patches above, and harmless if it fails.
-        if (unlock && Config::Instance()->FGXeFGExtraPacing.value_or_default())
+        if (unlock)
             XeFGPacing::Install(base);
 
         return true;
@@ -195,115 +240,8 @@ class XeFGUnlock
     static constexpr int32_t MaxReportedInterpolations = Config::XeFGMaxInterpolations;
 
     // Build identity of the libxess_fg.dll these offsets were derived from.
-    static constexpr uint32_t KnownBuildStamp = 0x69CB0F4D;
-    static constexpr uint32_t KnownSizeOfImage = 0x015ED000;
-
-    struct Patch
-    {
-        uint32_t rva;
-        const uint8_t* expected;
-        const uint8_t* replacement;
-        uint32_t size;
-        int32_t immOffset;
-        bool enabled;
-        const char* name;
-    };
-
-    struct Edited
-    {
-        uint8_t* dst;
-        const uint8_t* original;
-        uint32_t size;
-    };
+    static constexpr std::array<uint32_t, 2> KnownBuildStamp = { 0x69CB0F4D, 0x6A82BCEA };
+    static constexpr std::array<uint32_t, 2> KnownSizeOfImage = { 0x015ED000, 0x01184000 };
 
     inline static bool _applied = false;
-
-    static IMAGE_NT_HEADERS* NtHeaders(uint8_t* base)
-    {
-        auto* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
-
-        if (dos->e_magic != IMAGE_DOS_SIGNATURE)
-            return nullptr;
-
-        auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
-
-        return nt->Signature == IMAGE_NT_SIGNATURE ? nt : nullptr;
-    }
-
-    static const IMAGE_SECTION_HEADER* FindSection(uint8_t* base, const char* name)
-    {
-        auto* nt = NtHeaders(base);
-
-        if (nt == nullptr)
-            return nullptr;
-
-        auto* section = IMAGE_FIRST_SECTION(nt);
-
-        for (WORD i = 0; i < nt->FileHeader.NumberOfSections; i++, section++)
-        {
-            if (strncmp(reinterpret_cast<const char*>(section->Name), name, IMAGE_SIZEOF_SHORT_NAME) == 0)
-                return section;
-        }
-
-        return nullptr;
-    }
-
-    static bool Contains(const IMAGE_SECTION_HEADER* section, uint32_t rva, uint32_t size)
-    {
-        uint32_t start = section->VirtualAddress;
-        uint32_t end = start + section->Misc.VirtualSize;
-
-        return rva >= start && rva + size <= end;
-    }
-
-    static void WriteRaw(uint8_t* dst, const uint8_t* bytes, uint32_t size)
-    {
-        DWORD oldProtect = 0;
-
-        if (!VirtualProtect(dst, size, PAGE_EXECUTE_READWRITE, &oldProtect))
-            return;
-
-        memcpy(dst, bytes, size);
-        FlushInstructionCache(GetCurrentProcess(), dst, size);
-
-        DWORD ignored = 0;
-        VirtualProtect(dst, size, oldProtect, &ignored);
-    }
-
-    static bool WriteVerified(uint8_t* dst, const uint8_t* bytes, uint32_t size)
-    {
-        WriteRaw(dst, bytes, size);
-        return memcmp(dst, bytes, size) == 0;
-    }
-
-    static void Rollback(const Edited* applied, int32_t count)
-    {
-        if (count == 0)
-            return;
-
-        // Undo newest first so the image ends up exactly as the provider shipped it.
-        for (int32_t i = count - 1; i >= 0; i--)
-            WriteRaw(applied[i].dst, applied[i].original, applied[i].size);
-
-        LOG_INFO("XeFG unlock: rolled back {} patch(es)", count);
-    }
-
-    static std::string ToHex(const uint8_t* bytes, uint32_t size)
-    {
-        static const char* digits = "0123456789ABCDEF";
-
-        std::string out;
-        out.reserve(size * 3);
-
-        for (uint32_t i = 0; i < size; i++)
-        {
-            if (i > 0)
-                out.push_back(' ');
-
-            out.push_back(digits[bytes[i] >> 4]);
-            out.push_back(digits[bytes[i] & 0xF]);
-        }
-
-        return out;
-    }
 };

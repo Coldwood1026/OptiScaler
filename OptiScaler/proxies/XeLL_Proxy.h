@@ -16,6 +16,8 @@
 #include <magic_enum.hpp>
 #include <low_latency/input/input_xell.h>
 
+#include "XeLLUnLock.h"
+
 #pragma comment(lib, "Version.lib")
 
 // Common
@@ -77,6 +79,8 @@ static void RedirectAllExports(HMODULE hOld, HMODULE hNew)
 class XeLLProxy
 {
   private:
+    friend class XeMFGHooks;
+
     inline static HMODULE _dll = nullptr;
     inline static HMODULE _memoryDll = nullptr;
     inline static std::wstring _dllPath;

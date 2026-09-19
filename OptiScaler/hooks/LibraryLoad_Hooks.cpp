@@ -11,6 +11,7 @@
 
 #include <proxies/XeSS_Proxy.h>
 #include <proxies/XeFG_Proxy.h>
+#include <proxies/XeFGUnlock.h>
 #include <proxies/XeLL_Proxy.h>
 #include <proxies/NVNGX_Proxy.h>
 #include <proxies/FfxApi_Proxy.h>
@@ -27,6 +28,7 @@
 #include <hooks/Vulkan_Hooks.h>
 #include <hooks/Gdi32_Hooks.h>
 #include <hooks/Streamline_Hooks.h>
+#include <hooks/XeMFG_Hooks.h>
 
 #include <fsr4/FSR4ModelSelection.h>
 #include <fsr4/FSR4Upgrade.h>
@@ -135,12 +137,6 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
         LOG_INFO("{} call!", libNameA);
 
         return LibraryLoadHooks::LoadNvApi();
-    }
-
-    if (CheckDllNameW(&libName, &xessfgNamesW))
-    {
-        HMODULE xessfg = NtdllProxy::LoadLibraryExW_Ldr(L"libxess_fg.dll", NULL, 0);
-        return xessfg;
     }
 
     // Hook SL from local path if using Nvngx FG (and probably upgrading SL for it)
@@ -472,6 +468,30 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
             XeSSProxy::InitXeSSDx11(module);
 
         return module;
+    }
+
+    if (CheckDllNameW(&libName, &xefgNamesW))
+    {
+        HMODULE xessfg = NtdllProxy::LoadLibraryExW_Ldr(XeFGProxy::Module_Path().c_str(), NULL, 0);
+        XeMFGHooks::HooksXeFG();
+        return xessfg;
+    }
+
+    if (CheckDllNameW(&libName, &igxefgNamesW))
+    {
+        HMODULE igxessfg = NtdllProxy::LoadLibraryExW_Ldr(libName.c_str(), NULL, 0);
+        XeFGUnlock::ResetApplied();
+        if (!Config::Instance()->FGXeFGUnlockEnabled.value_or_default() || XeFGUnlock::Apply(igxessfg))
+            return igxessfg;
+        else
+            return nullptr;
+    }
+
+    if (CheckDllNameW(&libName, &xellNamesW))
+    {
+        HMODULE xell = NtdllProxy::LoadLibraryExW_Ldr(XeLLProxy::Module_Path().c_str(), NULL, 0);
+        XeMFGHooks::HooksXeLL();
+        return xell;
     }
 
     if (CheckDllNameW(&libName, &amdxc64NamesW))
@@ -1087,6 +1107,33 @@ void LibraryLoadHooks::CheckModulesInMemory()
     //         XeSSProxy::HookXeSSDx11(xessDx11Module);
     //     }
     // }
+
+    // XeFG
+    if (XeFGProxy::Module() == nullptr)
+    {
+        HMODULE xefgModule = nullptr;
+        xefgModule = GetDllNameWModule(&xefgNamesW);
+        if (xefgModule != nullptr)
+        {
+            State::Instance().IntelVendorId = true;
+            Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
+            LOG_DEBUG("libxess_fg.dll already in memory");
+            XeFGProxy::HookXeFG(xefgModule);
+        }
+    }
+    // XeLL
+    if (XeLLProxy::Module() == nullptr)
+    {
+        HMODULE xellModule = nullptr;
+        xellModule = GetDllNameWModule(&xellNamesW);
+        if (xellModule != nullptr)
+        {
+            State::Instance().IntelVendorId = true;
+            Config::Instance()->FGXeFGExtraPacing.set_volatile_value(false);
+            LOG_DEBUG("libxell.dll already in memory");
+            XeLLProxy::HookXeLL(xellModule);
+        }
+    }
 
     //// FFX Dx12
     // if (FfxApiProxy::Dx12Module() == nullptr)

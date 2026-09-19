@@ -48,6 +48,8 @@ typedef decltype(&xefgSwapChainEnableDebugFeature) PFN_xefgSwapChainEnableDebugF
 class XeFGProxy
 {
   private:
+    friend class XeMFGHooks;
+
     inline static HMODULE _dll = nullptr;
     inline static std::wstring _dllPath;
 
