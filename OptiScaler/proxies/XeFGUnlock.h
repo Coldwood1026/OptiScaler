@@ -138,8 +138,7 @@ class XeFGUnlock
             // target file version 1.3.1.78
             const Patch patchesSDK[] = {
                 { 0x20DA4F, u1Old, u1New, sizeof(u1Old), -1, unlock, "U1/frame-count-fallback" },
-                // Allow all gpu switch mode
-                { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, false, "U2/model-downgrade" },
+                { 0x1A5DE4, u2Old, u2New, sizeof(u2Old), -1, !State::Instance().IntelVendorId, "U2/model-downgrade" },
                 { 0x1A517D, u3Old, u3New, sizeof(u3Old), 1, unlock, "U3/default-ceiling" },
                 { 0x1A45C2, u4Old, u4New, sizeof(u4Old), 6, unlock, "U4/override-clamp" },
                 { 0x20973B, u5Old, u5New, sizeof(u5Old), 1, unlock, "U5/reported-maximum" },
