@@ -1877,13 +1877,19 @@ void StreamlineHooks::hookInterposer(HMODULE slInterposer)
         unhookInterposer();
 
     {
-        char dllPath[MAX_PATH];
-        GetModuleFileNameA(slInterposer, dllPath, MAX_PATH);
+        // Wide on purpose. The A variant returns the path in the process's ANSI codepage while
+        // string_to_wstring() decodes as UTF-8, so any game installed under a path with non-ASCII
+        // characters got a mangled name here, GetFileVersion() failed and sl_version stayed 0.0.0.
+        // Every Streamline hook below is gated on that number, so a game with a real 2.x interposer
+        // ended up with no hooks installed at all and its FG input chain silently dead.
+        wchar_t dllPath[MAX_PATH] = { 0 };
+        GetModuleFileNameW(slInterposer, dllPath, MAX_PATH);
 
-        LOG_TRACE("slInterposer path: {}", dllPath);
+        LOG_TRACE("slInterposer path: {}", wstring_to_string(dllPath));
 
         version_t sl_version;
-        Util::GetFileVersion(string_to_wstring(dllPath), &sl_version);
+        if (!Util::GetFileVersion(dllPath, &sl_version))
+            LOG_WARN("Could not read sl.interposer.dll's version, reporting it as 0.0.0");
 
         State::Instance().streamlineVersion.major = sl_version.major;
         State::Instance().streamlineVersion.minor = sl_version.minor;
