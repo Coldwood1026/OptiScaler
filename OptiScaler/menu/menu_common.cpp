@@ -4046,23 +4046,29 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             ImGui::SameLine(0.0f, 16.0f);
 
             std::vector<std::string> intModes;
-            intModes.reserve(maxInterpolationCount);
+            intModes.reserve(maxInterpolationCount + 1);
+          
+            const int currentCount = (int) fgOutput->GetInterpolatedFrameCount();
+          
+            if (currentCount > 0)
+                intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
+            else
+                intModes.emplace_back(std::string("Auto"));
             for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
                 intModes.emplace_back(std::format("{}X", i));
 
-            const int currentSet = (int) fgOutput->GetInterpolatedFrameCount() - 1;
-
             ImGui::PushItemWidth(95.0f * menuResScale);
 
-            if (ImGui::BeginCombo("MFG", intModes[currentSet].c_str()))
+            if (ImGui::BeginCombo("MFG", intModes[currentCount].c_str()))
             {
                 for (int i = 0; i < maxInterpolationCount; i++)
                 {
-                    if (ImGui::Selectable(intModes[i].c_str(), (currentSet == i)))
+                    if (ImGui::Selectable(intModes[i].c_str(), (currentCount == i)))
                     {
-                        LOG_DEBUG("XeFG Interpolation Count set to: {}", i + 1);
+                        if (i == 0) config->FGXeFGInterpolationCount = std::nullopt;;
+                        LOG_DEBUG("XeFG Interpolation Count set to: {}", i);
                         state.fgChanged = true;
-                        config->FGXeFGInterpolationCount = i + 1;
+                        config->FGXeFGInterpolationCount = i;
                     }
                 }
                 ImGui::EndCombo();
@@ -4080,6 +4086,8 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             char mfgTip[512];
             std::snprintf(mfgTip, sizeof(mfgTip),
                           "Set XeFG interpolation count\n\n"
+                          "Auto (the default) follows the multiplier of the game's own\n"
+                          "frame generation setting, and is what an unset value means.\n\n"
                           "2X-4X work on their own.\n\n"
                           "Above 4X the generated frames are presented faster than\n"
                           "the display refreshes, so VSync (or a frame rate cap) is\n"

@@ -7,6 +7,7 @@
 
 #include <proxies/Ntdll_Proxy.h>
 #include <proxies/KernelBase_Proxy.h>
+#include <proxies/XeLLUnLock.h>
 #include <hooks/Xell_Hooks.h>
 
 #include <xell.h>
@@ -260,6 +261,9 @@ class XeLLProxy
 
         _dll = libxellModule;
 
+        // Same reasoning as the libxess_fg side: the provider's own argument
+        // validation is what caps the generated frame count, so it is patched on
+        // the mapped image rather than worked around at the call site.
         XeLLUnlock::Apply(_dll);
 
         {

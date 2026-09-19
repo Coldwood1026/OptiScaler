@@ -89,20 +89,7 @@ class XeLLUnlock
                 return false;
             }
 
-            uint8_t buffer[16] {};
-            const uint8_t* replacement = patch.replacement;
-
-            // if (patch.immOffset >= 0)
-            //{
-            //     memcpy(buffer, patch.replacement, patch.size);
-            //     buffer[patch.immOffset + 0] = static_cast<uint8_t>(maxInterp & 0xFF);
-            //     buffer[patch.immOffset + 1] = static_cast<uint8_t>((maxInterp >> 8) & 0xFF);
-            //     buffer[patch.immOffset + 2] = static_cast<uint8_t>((maxInterp >> 16) & 0xFF);
-            //     buffer[patch.immOffset + 3] = static_cast<uint8_t>((maxInterp >> 24) & 0xFF);
-            //     replacement = buffer;
-            // }
-
-            if (!WriteVerified(dst, replacement, patch.size))
+            if (!WriteVerified(dst, patch.replacement, patch.size))
             {
                 LOG_WARN("XeLL unlock: {} at {:#x} failed write verification, aborting", patch.name, patch.rva);
                 Rollback(applied, appliedCount);

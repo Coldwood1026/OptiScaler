@@ -566,3 +566,21 @@ class ScopedCreatingD3DDevice
     }
     ~ScopedCreatingD3DDevice() { State::Instance().creatingD3DDevice = previousState; }
 };
+
+// Highest number of interpolated frames the game is told it may ask for. Everything that is not
+// OptiScaler's own XeFG backend has always been reported as 1, which is what keeps the game's frame
+// generation setting collapsed to a plain on/off toggle. XeFG knows its own ceiling, so report that and
+// let the game offer the matching multipliers. While the XeFG swapchain does not exist yet - which is
+// what happens when the game asks for the capabilities early - the caller supplied value is used.
+inline int MaxInterpolationCountForGame(int fallback)
+{
+    const auto& state = State::Instance();
+
+    if (state.activeFgOutput != FGOutput::XeFG)
+        return 1;
+
+    if (state.currentFG != nullptr)
+        return state.currentFG->GetMaxInterpolationCount();
+
+    return fallback;
+}
